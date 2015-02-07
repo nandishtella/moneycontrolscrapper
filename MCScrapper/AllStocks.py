@@ -4,24 +4,24 @@ from lxml import etree
 import re
 from MCScrapper import const
 import time
+import pickle
 
-# import httplib
-# httplib.HTTPConnection._http_vsn = 10
+#import httplib
+#httplib.HTTPConnection._http_vsn = 10
 #httplib.HTTPConnection._http_vsn_str = 'HTTP/1.0'
 
 xpath_mapping = {'Company': '//*[@id="nChrtPrc"]/div[3]/h1/text()',
                  'Price': '//*[@id="Bse_Prc_tick"]/strong/text()',
                  'MARKET CAP (RS CR)': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[1]/div[2]/text()',
-                 'P/E': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[2]/div[2]/text()',
-                 'BOOK VALUE (RS)': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[3]/div[2]/text()',
-                 'DIV (%)': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[4]/div[2]/text()',
-                 'INDUSTRY P/E': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[6]/div[2]/text()',
-                 'EPS (TTM)': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[1]/div[2]/text()',
-                 'P/C( price / cashflow )': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[2]/div[2]/text()',
-                 'PRICE/BOOK': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[3]/div[2]/text()',
-                 'DIV YIELD.(%)': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[4]/div[2]/text()',
-                 'FACE VALUE (RS)': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[5]/div[2]/text()'
-
+                 'P/E': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[2]/div[2]/text()',
+                 'BOOK VALUE (RS)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[3]/div[2]/text()',
+                 'DIV (%)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[4]/div[2]/text()',
+                 'INDUSTRY P/E': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[6]/div[2]/text()',
+                 'EPS (TTM)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[1]/div[2]/text()',
+                 'P/C( price / cashflow )': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[2]/div[2]/text()',
+                 'PRICE/BOOK': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[3]/div[2]/text()',
+                 'DIV YIELD.(%)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[4]/div[2]/text()',
+                 'FACE VALUE (RS)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[5]/div[2]/text()'
 }
 
 
@@ -76,11 +76,20 @@ def getAllTickerLinks(parent_url):
     return all_links
 
 
-def saveAllTickerLinks(all_links):
+def saveAllTickerLinks( links ):
     file = open(const.LINKS_FILENAME, 'w')
-    for link in all_links:
-        file.write(link)
+    for link in links:
+        file.write( link )
         file.write( "\n" )
+    file.close()
+
+def readAllTickerLinks():
+    file = open( const.LINKS_FILENAME, 'r' )
+    lines = file.read().splitlines()
+    links = [];
+    for line in lines:
+        links.append( line )
+    return( links )
 
 
 def getValueAtXpath(html, xpath):
@@ -100,32 +109,54 @@ def symbolStats(symbol_url):
         symbol_stats[key] = getValueAtXpath(html, xpath_mapping[key])
     return symbol_stats
 
+def getStatsFromLinks( links, stats = {} ):
+    counter = 0
+    for link in links:
+        counter = counter + 1
+        print( counter )
+        if( link in stats ):
+            print( "Already Parsed :" + link )
+            continue
+
+        print(link)
+        repeat_count = const.SYMBOL_LINKS_REPEAT_COUNT
+        while( repeat_count > 0):
+            try:
+                symbol_stats = symbolStats(link)
+                print( symbol_stats )
+                stats[ link ] = symbol_stats
+                break
+            except:
+                time.sleep( const.SYMBOL_LINKS_ERROR_SLEEP_TIME )
+                repeat_count = repeat_count - 1
+                if( repeat_count == 0 ):
+                    print("Cannot parse " + link)
+    return stats
 
 def getStats(parent_url):
     all_links = getAllTickerLinks(parent_url)
-    stats = []
-    counter = 0
-    for link in all_links:
-        counter = counter + 1
-        print(counter)
-        print(link)
-        try:
-            symbol_stats = symbolStats(link)
-            stats.append(symbol_stats)
-        except:
-            print("Cannot parse " + link)
+    stats = getStatsFromLinks( all_links )
     return stats
 
+def saveStatsToFile( stats ):
+    file = open( const.TICKER_STATS_FILENAME, 'wb')
+    pickle.dump( stats, file)
+    file.close()
 
-
+def readStatsFromFile():
+    file = open( const.TICKER_STATS_FILENAME, 'rb' )
+    stats = pickle.load( file )
+    return stats
 
 #parent_url = 'http://www.moneycontrol.com/stocks/marketinfo/marketcap/bse/index.html'
 #stats = getStats(parent_url)
 
-parent_url = 'http://www.moneycontrol.com/stocks/marketinfo/marketcap/bse/index.html'
-links = getAllTickerLinks( parent_url )
-saveAllTickerLinks( links )
+#parent_url = 'http://www.moneycontrol.com/stocks/marketinfo/marketcap/bse/index.html'
+#links = getAllTickerLinks( parent_url )
+#saveAllTickerLinks( links )
 
+#links = readAllTickerLinks();
+#print( links )
 
 #parent_url = 'http://www.moneycontrol.com/stocks/marketinfo/marketcap/bse/index.html'
 #links = getAllSectorLinks(parent_url)
