@@ -12,7 +12,7 @@ import pickle
 
 xpath_mapping = {'Company': '//*[@id="nChrtPrc"]/div[3]/h1/text()',
                  'Price': '//*[@id="Bse_Prc_tick"]/strong/text()',
-                 'MARKET CAP (RS CR)': '//*[@id="nChrtPrc"]/div[10]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[1]/div[2]/text()',
+                 'MARKET CAP (RS CR)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[1]/div[2]/text()',
                  'P/E': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[2]/div[2]/text()',
                  'BOOK VALUE (RS)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[3]/div[2]/text()',
                  'DIV (%)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[4]/div[2]/text()',
