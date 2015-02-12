@@ -11,19 +11,56 @@ import pickle
 #httplib.HTTPConnection._http_vsn_str = 'HTTP/1.0'
 
 xpath_mapping = {'Company': '//*[@id="nChrtPrc"]/div[3]/h1/text()',
+                 'ISIN' : '//*[@id="nChrtPrc"]/div[4]/div[1]/text()[3]',
                  'Price': '//*[@id="Bse_Prc_tick"]/strong/text()',
-                 'MARKET CAP (RS CR)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[1]/div[2]/text()',
+                 'Market Cap': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[1]/div[2]/text()',
                  'P/E': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[2]/div[2]/text()',
-                 'BOOK VALUE (RS)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[3]/div[2]/text()',
-                 'DIV (%)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[4]/div[2]/text()',
-                 'INDUSTRY P/E': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[6]/div[2]/text()',
+                 'Book Value': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[3]/div[2]/text()',
+                 'Div %': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[4]/div[2]/text()',
+                 'Industry P/E': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[6]/div[2]/text()',
                  'EPS (TTM)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[1]/div[2]/text()',
-                 'P/C( price / cashflow )': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[2]/div[2]/text()',
-                 'PRICE/BOOK': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[3]/div[2]/text()',
-                 'DIV YIELD.(%)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[4]/div[2]/text()',
-                 'FACE VALUE (RS)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[5]/div[2]/text()'
+                 'P/C': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[2]/div[2]/text()', #price / cashflow
+                 'Price/Book': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[3]/div[2]/text()',
+                 'Div Yield %': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[4]/div[2]/text()',
+                 'Face Value': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[5]/div[2]/text()',
 }
 
+def defaultFunc( value ):
+    return( value )
+
+def floatFunc( value ):
+    value = re.sub( ',', '', value )
+    value = re.sub( '%', '', value )
+    return( float( value) )
+
+def ISINFunc( value ):
+    value = re.sub( 'ISIN: ', '', value)
+    value = re.sub( ' ', '', value )
+    return( value )
+
+lambda_mapping = {
+                    'Company' : defaultFunc,
+                    'ISIN' : ISINFunc,
+                    'Price' : floatFunc,
+                    'Market Cap': floatFunc,
+                    'P/E': floatFunc,
+                    'Book Value': floatFunc,
+                    'Div %': floatFunc,
+                    'Industry P/E': floatFunc,
+                    'EPS (TTM)': floatFunc,
+                    'P/C': floatFunc,
+                    'Price/Book': floatFunc,
+                    'Div Yield %': floatFunc,
+                    'Face Value': floatFunc,
+}
+
+def getValueForKey(html, key):
+    xpath = xpath_mapping[ key ]
+    xpath = html.xpath(xpath)
+    func = lambda_mapping[key]
+    if xpath:
+        return( func( xpath[0] ) )
+    return ''
 
 def getAllSectorLinks(parent_url):
     page = urllib.request.urlopen(parent_url)
@@ -92,13 +129,6 @@ def readAllTickerLinks():
     return( links )
 
 
-def getValueAtXpath(html, xpath):
-    xpath = html.xpath(xpath)
-    if xpath:
-        return xpath[0]
-    return ''
-
-
 def symbolStats(symbol_url):
     page = urllib.request.urlopen(symbol_url)
     data = page.read()
@@ -106,7 +136,8 @@ def symbolStats(symbol_url):
     html = etree.HTML(data)
     symbol_stats = {}
     for key in xpath_mapping:
-        symbol_stats[key] = getValueAtXpath(html, xpath_mapping[key])
+        symbol_stats[key] = getValueForKey(html, key)
+    symbol_stats[ "Date" ] = time.strftime("%x")
     return symbol_stats
 
 def getStatsFromLinks( links, stats = {} ):
@@ -174,4 +205,3 @@ def readStatsFromFile():
 
 #symbol_url = 'http://www.moneycontrol.com//india/stockpricequote/financeinvestments/nagreekacapitalinfrastructure/CRG'
 #print( symbolStats( symbol_url ) )
-
