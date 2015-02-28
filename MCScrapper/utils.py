@@ -6,6 +6,9 @@ from MCScrapper import const
 import time
 import pickle
 
+#//*[@id="mktdet_2"]/div[1]/div[2]/div[2]
+#//*[@id="mktdet_1"]/div[1]/div[2]/div[2]
+
 #import httplib
 #httplib.HTTPConnection._http_vsn = 10
 #httplib.HTTPConnection._http_vsn_str = 'HTTP/1.0'
@@ -13,24 +16,38 @@ import pickle
 xpath_mapping = {'Company': '//*[@id="nChrtPrc"]/div[3]/h1/text()',
                  'ISIN' : '//*[@id="nChrtPrc"]/div[4]/div[1]/text()[3]',
                  'Price': '//*[@id="Bse_Prc_tick"]/strong/text()',
-                 'Market Cap': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[1]/div[2]/text()',
-                 'P/E': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[2]/div[2]/text()',
-                 'Book Value': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[3]/div[2]/text()',
-                 'Div %': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[4]/div[2]/text()',
-                 'Industry P/E': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[1]/div[6]/div[2]/text()',
-                 'EPS (TTM)': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[1]/div[2]/text()',
-                 'P/C': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[2]/div[2]/text()', #price / cashflow
-                 'Price/Book': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[3]/div[2]/text()',
-                 'Div Yield %': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[4]/div[2]/text()',
-                 'Face Value': '//*[@id="nChrtPrc"]/div[11]/div[1]/div[2]/div[8]/div[1]/div[1]/div[2]/div[5]/div[2]/text()',
+                 'Market Cap': '//*[@id="mktdet_1"]/div[1]/div[1]/div[2]/text()',
+                 'Standalone P/E': '//*[@id="mktdet_1"]/div[1]/div[2]/div[2]/text()',
+                 'Consolidated P/E': '//*[@id="mktdet_2"]/div[1]/div[2]/div[2]/text()',
+                 'Standalone Book Value': '//*[@id="mktdet_1"]/div[1]/div[3]/div[2]/text()',
+                 'Consolidated Book Value': '//*[@id="mktdet_2"]/div[1]/div[3]/div[2]/text()',
+                 'Div %': '//*[@id="mktdet_1"]/div[1]/div[4]/div[2]/text()',
+                 'Industry P/E': '//*[@id="mktdet_1"]/div[1]/div[6]/div[2]/text()',
+                 'Standalone EPS (TTM)': '//*[@id="mktdet_1"]/div[2]/div[1]/div[2]/text()',
+                 'Consolidated EPS (TTM)': '//*[@id="mktdet_2"]/div[2]/div[1]/div[2]/text()',
+                 'Standalone P/C': '//*[@id="mktdet_1"]/div[2]/div[2]/div[2]/text()', #price / cashflow
+                 'Consolidated P/C': '//*[@id="mktdet_2"]/div[2]/div[2]/div[2]/text()', #price / cashflow
+                 'Standalone Price/Book': '//*[@id="mktdet_1"]/div[2]/div[3]/div[2]/text()',
+                 'Consolidated Price/Book': '//*[@id="mktdet_2"]/div[2]/div[3]/div[2]/text()',
+                 'Div Yield %': '//*[@id="mktdet_1"]/div[2]/div[4]/div[2]/text()',
+                 'Face Value': '//*[@id="mktdet_1"]/div[2]/div[5]/div[2]/text()',
 }
 
 def defaultFunc( value ):
     return( value )
 
-def floatFunc( value ):
+def floatFunc( value ): # for all these columns if we find '-' its error value, but we represent it using '-1'
     value = re.sub( ',', '', value )
     value = re.sub( '%', '', value )
+    if( value == '-' ):
+        value = '-1'
+    return( float( value) )
+
+def divYieldFunc( value ):
+    value = re.sub( ',', '', value )
+    value = re.sub( '%', '', value )
+    if( value == '-' ):
+        value = '0'
     return( float( value) )
 
 def ISINFunc( value ):
@@ -43,14 +60,19 @@ lambda_mapping = {
                     'ISIN' : ISINFunc,
                     'Price' : floatFunc,
                     'Market Cap': floatFunc,
-                    'P/E': floatFunc,
-                    'Book Value': floatFunc,
+                    'Standalone P/E': floatFunc,
+                    'Consolidated P/E': floatFunc,
+                    'Standalone Book Value': floatFunc,
+                    'Consolidated Book Value': floatFunc,
                     'Div %': floatFunc,
                     'Industry P/E': floatFunc,
-                    'EPS (TTM)': floatFunc,
-                    'P/C': floatFunc,
-                    'Price/Book': floatFunc,
-                    'Div Yield %': floatFunc,
+                    'Standalone EPS (TTM)': floatFunc,
+                    'Consolidated EPS (TTM)': floatFunc,
+                    'Standalone P/C': floatFunc,
+                    'Consolidated P/C': floatFunc,
+                    'Standalone Price/Book': floatFunc,
+                    'Consolidated Price/Book': floatFunc,
+                    'Div Yield %': divYieldFunc,
                     'Face Value': floatFunc,
 }
 
@@ -137,7 +159,7 @@ def symbolStats(symbol_url):
     symbol_stats = {}
     for key in xpath_mapping:
         symbol_stats[key] = getValueForKey(html, key)
-    symbol_stats[ "Date" ] = time.strftime("%x")
+    symbol_stats[ "Date" ] = const.DATE
     return symbol_stats
 
 def getStatsFromLinks( links, stats = {} ):

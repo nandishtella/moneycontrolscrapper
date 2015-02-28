@@ -16,9 +16,14 @@ while( links_covered < length ):
         stats = {}
     links_subset = links[ links_covered: links_covered + 100 ]
     links_covered += 100
-    print( "links covered: " + str( links_covered ) )
     stats = utils.getStatsFromLinks( links_subset, stats )
     utils.saveStatsToFile( stats )
-
+    print( "links covered: " + str( links_covered ) )
 #print( stats )
 
+stats_array = []
+for stat in stats:
+    data = stats[ stat ]
+    if( data[ 'P/E' ] != '' ):
+        stats_array.append( data )
+        #break
